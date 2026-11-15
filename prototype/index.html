@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>A Two-Minute Sally</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,400;0,500;0,700;1,400&family=Alegreya+Sans:wght@500;700&family=IM+Fell+English:ital@0;1&display=swap">
+<style>
+/* Layout: one screen. Four fortunes on top, one leaf of the book in the middle,
+   two voices at the bottom. Whitewash and anil blue are the plain world of La Mancha;
+   saffron and wine are the world Don Quixote sees. */
+:root{
+  --sky:#e6ecf6; --wall:#fcfcf9; --ink:#1b2440; --anil:#2747b0; --earth:#d9b961;
+  --gold:#d99a00; --wine:#8d1f3a; --mute:#59617d; --line:#c5cde0; --shade:#eef1f7;
+  --display:"IM Fell English","Iowan Old Style","Palatino Linotype",Georgia,serif;
+  --body:"Alegreya","Iowan Old Style",Georgia,serif;
+  --label:"Alegreya Sans","Gill Sans","Trebuchet MS",sans-serif;
+  padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --sky:#0e1430; --wall:#192146; --ink:#eef0f8; --anil:#93a9ff; --earth:#5f5126;
+  --gold:#f2bd3a; --wine:#ee7d98; --mute:#a6aecb; --line:#33407a; --shade:#222c5a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --sky:#0e1430; --wall:#192146; --ink:#eef0f8; --anil:#93a9ff; --earth:#5f5126;
+  --gold:#f2bd3a; --wine:#ee7d98; --mute:#a6aecb; --line:#33407a; --shade:#222c5a; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{margin:0;background:var(--sky);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.35;
+  -webkit-tap-highlight-color:transparent;overscroll-behavior:none}
+#app{height:100%;max-width:460px;margin:0 auto;display:flex;flex-direction:column;gap:10px;
+  padding-block:10px 12px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* fortunes */
+.gauges{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.gauge{position:relative;display:flex;flex-direction:column;gap:4px;min-width:0}
+.gauge b{font:700 .68rem/1 var(--label);letter-spacing:.09em;text-transform:uppercase;color:var(--mute)}
+.gauge em{font-style:normal;margin-left:5px;color:var(--anil);letter-spacing:.02em}
+.gauge em.neg{color:var(--wine)}
+.gauge .bar{height:9px;border-radius:5px;background:var(--shade);border:1px solid var(--line);overflow:hidden}
+.gauge .bar i{display:block;height:100%;width:50%;background:var(--anil);transition:width .5s cubic-bezier(.2,.8,.2,1),background .3s}
+.gauge.low .bar i{background:var(--wine)}
+.gauge .pip{position:absolute;right:0;top:-1px;width:0;height:0;border-radius:50%;background:var(--gold);transition:width .15s,height .15s}
+.gauge.touch .pip{width:7px;height:7px}
+.gauge.touch.big .pip{width:11px;height:11px}
+
+/* the leaf */
+#stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;position:relative}
+.leaf{width:100%;max-height:100%;background:var(--wall);border:1.5px solid var(--ink);border-radius:6px;
+  box-shadow:5px 6px 0 var(--anil);padding:14px 16px 16px;display:flex;flex-direction:column;gap:10px;overflow:auto}
+#card{touch-action:pan-y;user-select:none;-webkit-user-select:none;cursor:grab;will-change:transform}
+#card.snap{transition:transform .28s cubic-bezier(.2,.8,.2,1)}
+#card.gone{transition:transform .22s ease-in,opacity .22s ease-in;opacity:0}
+.place{font:500 .74rem/1.2 var(--label);letter-spacing:.1em;text-transform:uppercase;color:var(--mute);display:flex;justify-content:space-between;gap:8px}
+.scene{border:1.5px solid var(--ink);border-radius:3px;overflow:hidden;background:var(--shade);flex:0 1 auto;min-height:0}
+.scene svg{display:block;width:100%;height:auto;max-height:30vh}
+.sees{display:grid;gap:5px}
+.see{margin:0;font-size:.98rem;transition:opacity .15s}
+.see b{font:700 .66rem/1 var(--label);letter-spacing:.1em;text-transform:uppercase;margin-right:6px;white-space:nowrap}
+.see.plain b{color:var(--anil)} .see.dream b{color:var(--gold)}
+.see.dream{font-style:italic}
+.prompt{margin:0;padding-top:9px;border-top:1px solid var(--line);font-size:1.02rem}
+.out{margin:0;font-size:1.12rem;line-height:1.38}
+.book{margin:0;padding:10px 12px;background:var(--shade);border-left:3px solid var(--anil);font-size:.93rem;color:var(--mute)}
+.book b,.note b{font:700 .66rem/1 var(--label);letter-spacing:.1em;text-transform:uppercase;color:var(--anil);display:block;margin-bottom:4px}
+
+/* svg paint */
+.sk{fill:var(--shade)} .gr{fill:var(--earth)} .wl{fill:var(--wall)} .bl{fill:var(--anil)} .ik{fill:var(--ink)}
+.st{stroke:var(--ink);stroke-width:2.2;stroke-linejoin:round;stroke-linecap:round}
+.ln{fill:none;stroke:var(--ink);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.thin{stroke-width:1.3}
+.gd{fill:var(--gold)} .wn{fill:var(--wine)} .gl{fill:none;stroke:var(--gold);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.wnl{fill:none;stroke:var(--wine);stroke-width:2.6;stroke-linecap:round}
+.eye{fill:var(--wall);stroke:var(--ink);stroke-width:1.6}
+.dreamL{opacity:.3;transition:opacity .12s linear}
+.rest .dreamL{animation:breathe 3.6s ease-in-out infinite}
+@keyframes breathe{0%,100%{opacity:.08}50%{opacity:.62}}
+
+/* voices */
+.choices{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.choices.off{visibility:hidden}
+#face,#back{display:flex;flex-direction:column;gap:10px}
+.choice{font:inherit;color:var(--ink);background:var(--wall);border:1.5px solid var(--ink);border-radius:6px;padding:9px 10px 10px;
+  text-align:left;display:flex;flex-direction:column;gap:3px;min-height:68px;cursor:pointer;transition:transform .12s,background .12s,color .12s}
+.choice small{font:700 .66rem/1 var(--label);letter-spacing:.1em;text-transform:uppercase;color:var(--anil)}
+.choice.right{text-align:right;align-items:flex-end}
+.choice.right small{color:var(--gold)}
+.choice span{font-size:.98rem;line-height:1.2}
+.choice.lean{transform:translateY(-3px)}
+.choice.left.lean{background:var(--anil);color:var(--wall)} .choice.left.lean small{color:var(--wall)}
+.choice.right.lean{background:var(--gold);color:#1b2440} .choice.right.lean small{color:#1b2440}
+.btn{font:700 .86rem/1 var(--label);letter-spacing:.1em;text-transform:uppercase;color:var(--wall);background:var(--anil);
+  border:1.5px solid var(--ink);border-radius:6px;padding:14px 16px;cursor:pointer;width:100%}
+.btn.ghost{background:transparent;color:var(--ink)}
+button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+
+/* title and end */
+h1{font:400 clamp(2.1rem,9vw,2.9rem)/1 var(--display);margin:0;text-wrap:balance}
+h1 em{color:var(--anil)}
+.lede{margin:0;font-size:1.08rem}
+.how{margin:0;padding:10px 12px;background:var(--shade);border-left:3px solid var(--gold);font-size:.95rem}
+.fine{margin:0;font:500 .78rem/1.3 var(--label);color:var(--mute)}
+.chap{font:400 1.24rem/1.3 var(--display);margin:0;text-wrap:pretty}
+.chap i{color:var(--anil)}
+.epithet{margin:0;font:700 .72rem/1.2 var(--label);letter-spacing:.1em;text-transform:uppercase;color:var(--mute)}
+.epithet strong{display:block;font:italic 400 1.5rem/1.1 var(--display);letter-spacing:0;text-transform:none;color:var(--ink);margin-top:3px}
+.tally{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0;padding:0;list-style:none}
+.tally li{border:1px solid var(--line);border-radius:4px;padding:7px 8px;font:500 .7rem/1.15 var(--label);letter-spacing:.06em;text-transform:uppercase;color:var(--mute)}
+.tally strong{display:block;font:700 1.45rem/1 var(--body);color:var(--ink);font-variant-numeric:lining-nums tabular-nums;margin-bottom:3px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-height:640px){body{font-size:15.5px}.leaf{padding:10px 13px 12px;gap:7px}.scene svg{max-height:25vh}.choice{min-height:58px}}
+@media (prefers-reduced-motion:reduce){.rest .dreamL{animation:none;opacity:.35}#card.snap,#card.gone,.gauge .bar i{transition:none}}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="gauges" aria-label="Your fortunes">
+    <div class="gauge" data-k="glory"><span class="pip"></span><b>Glory<em></em></b><span class="bar"><i></i></span></div>
+    <div class="gauge" data-k="body"><span class="pip"></span><b>Body<em></em></b><span class="bar"><i></i></span></div>
+    <div class="gauge" data-k="purse"><span class="pip"></span><b>Purse<em></em></b><span class="bar"><i></i></span></div>
+    <div class="gauge" data-k="sancho"><span class="pip"></span><b>Sancho<em></em></b><span class="bar"><i></i></span></div>
+  </header>
+
+  <main id="stage">
+    <section id="title" class="leaf">
+      <p class="place"><span>Don Quixote, Part One</span><span>A taste</span></p>
+      <div class="scene" id="titleScene"></div>
+      <h1>A Two-Minute <em>Sally</em></h1>
+      <p class="lede">Every page of your road can be read two ways. Sancho sees what is there. You see what ought to be.</p>
+      <p class="how"><b style="font:700 .66rem/1 var(--label);letter-spacing:.1em;text-transform:uppercase;color:var(--gold);display:block;margin-bottom:4px">How to play</b>Drag the page left for the plain truth or right for the dream, or tap a voice below. If any of the four fortunes above runs dry, the sally is over.</p>
+      <button class="btn" id="start">Sally forth</button>
+      <p class="fine">Thirteen scenes from the 1605 novel. About two minutes.</p>
+    </section>
+
+    <section id="card" class="leaf rest" hidden aria-live="polite">
+      <p class="place"><span id="place"></span><span id="count"></span></p>
+      <div class="scene" id="scene"></div>
+      <div id="face">
+        <div class="sees">
+          <p class="see plain"><b id="whoL">Sancho sees</b><span id="plain"></span></p>
+          <p class="see dream"><b>Don Quixote sees</b><span id="dreamTxt"></span></p>
+        </div>
+        <p class="prompt" id="prompt"></p>
+      </div>
+      <div id="back" hidden>
+        <p class="out" id="out"></p>
+        <p class="book"><b>In the book</b><span id="book"></span></p>
+        <button class="btn" id="next">Ride on</button>
+      </div>
+    </section>
+
+    <section id="end" class="leaf" hidden>
+      <p class="place"><span id="endPlace">Your chapter</span><span>Part One</span></p>
+      <p class="chap" id="chap"></p>
+      <p class="epithet">You rode as<strong id="epithet"></strong></p>
+      <ul class="tally">
+        <li><strong id="tGlory">0</strong>Glory won</li>
+        <li><strong id="tTeeth">0</strong>Teeth lost</li>
+        <li><strong>0</strong>Giants slain</li>
+      </ul>
+      <p class="book"><b>In the book</b><span id="endBook"></span></p>
+      <div class="row">
+        <button class="btn ghost" id="copy">Copy chapter</button>
+        <button class="btn" id="again">Ride again</button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="choices" id="choices" hidden>
+    <button class="choice left" id="btnL"><small id="tagL">Sancho</small><span id="lblL"></span></button>
+    <button class="choice right" id="btnR"><small>Don Quixote</small><span id="lblR"></span></button>
+  </footer>
+</div>
+<script>
+/* ---------- scenes: every picture is drawn twice, plain world below, dream on top ---------- */
+const G=140, still=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const bg=(x='')=>`<rect class="sk" width="320" height="180"/>${x}<path class="gr st" d="M-4 ${G} Q80 ${G-8} 160 ${G-2} T324 ${G-5} V184 H-4Z"/>`;
+const spin=(x,y,d=11)=>still?'':`<animateTransform attributeName="transform" type="rotate" from="0 ${x} ${y}" to="360 ${x} ${y}" dur="${d}s" repeatCount="indefinite"/>`;
+function man(x,y,o={}){const w=o.fat?13:8,h=o.h||46,c=o.cls||'wl',t=y-h+14;
+  let s=`<path class="${c} st" d="M${x-w} ${t} Q${x} ${t-6} ${x+w} ${t} L${x+w+2} ${y-8} H${x-w-2}Z"/>`;
+  if(!o.nolegs)s+=`<path class="ln" d="M${x-4} ${y-8}V${y}M${x+4} ${y-8}V${y}"/>`;
+  s+=`<circle class="wl st" cx="${x}" cy="${t-9}" r="7"/>`;
+  if(o.hat==='hood')s+=`<path class="ik" d="M${x-9} ${t-5} Q${x} ${t-28} ${x+9} ${t-5} Q${x} ${t-13} ${x-9} ${t-5}Z"/>`;
+  if(o.hat==='brim')s+=`<path class="ik st" d="M${x-11} ${t-14}H${x+11}M${x-6} ${t-14} Q${x} ${t-23} ${x+6} ${t-14}"/>`;
+  return s}
+function beast(x,y,o={}){const L=o.long?24:18,t=o.thin?6:9,c=o.cls||'wl',leg=o.long?16:11,b=y-leg-t;
+  return `<path class="ln" d="M${x-L+4} ${b+t-2}V${y}M${x-L+10} ${b+t-1}V${y}M${x+L-10} ${b+t-1}V${y}M${x+L-4} ${b+t-2}V${y}"/><ellipse class="${c} st" cx="${x}" cy="${b}" rx="${L}" ry="${t}"/><path class="${c} st" d="M${x+L-6} ${b-3} L${x+L+8} ${b-14} L${x+L+15} ${b-9} L${x+L+4} ${b+2}Z"/><path class="ln" d="M${x+L+7} ${b-14}l-2 -${o.long?5:9}M${x+L+10} ${b-13}l1 -${o.long?5:9}M${x-L} ${b-2}q-6 4 -4 12"/>`}
+const rider=(x,y,b={},m={})=>beast(x,y,b)+man(x-3,y-(b.long?16:11)-(b.thin?6:9)+4,Object.assign({h:36,nolegs:1},m));
+function mill(x,y,s=1){const hy=y-58*s,r=34*s;
+  const arm=a=>`<g transform="rotate(${a} ${x} ${hy})"><path class="ln" d="M${x} ${hy}V${hy-r}"/><rect class="wl st thin" x="${x+1}" y="${hy-r}" width="${9*s}" height="${r*.72}"/></g>`;
+  return `<path class="wl st" d="M${x-15*s} ${y} L${x-9*s} ${y-56*s} H${x+9*s} L${x+15*s} ${y}Z"/><path class="ik st" d="M${x-11*s} ${y-56*s} L${x} ${y-72*s} L${x+11*s} ${y-56*s}Z"/><rect class="bl" x="${x-3*s}" y="${y-14*s}" width="${6*s}" height="${14*s}"/><g>${[0,90,180,270].map(arm).join('')}${spin(x,hy)}</g><circle class="ik" cx="${x}" cy="${hy}" r="${2.5*s}"/>`}
+const crown=(x,y,s=1)=>`<path class="gd st thin" d="M${x-8*s} ${y} l${-2*s} ${-9*s} l${5*s} ${4*s} l${5*s} ${-7*s} l${5*s} ${7*s} l${5*s} ${-4*s} l${-2*s} ${9*s}Z"/>`;
+const face=(x,y,s=1)=>`<circle class="eye" cx="${x-4.5*s}" cy="${y}" r="${3.4*s}"/><circle class="eye" cx="${x+4.5*s}" cy="${y}" r="${3.4*s}"/><circle class="ik" cx="${x-4*s}" cy="${y+.5*s}" r="${1.3*s}"/><circle class="ik" cx="${x+5*s}" cy="${y+.5*s}" r="${1.3*s}"/><path class="wnl" d="M${x-9*s} ${y-6*s}l${7*s} ${3*s}M${x+9*s} ${y-6*s}l${-7*s} ${3*s}M${x-6*s} ${y+12*s}q${6*s} ${-5*s} ${12*s} 0"/>`;
+function giant(x,y,s=1){const hy=y-58*s,r=34*s;
+  return `<g>${[0,90,180,270].map(a=>`<g transform="rotate(${a} ${x} ${hy})"><circle class="wn st thin" cx="${x+5*s}" cy="${hy-r}" r="${6*s}"/></g>`).join('')}${spin(x,hy)}</g>${face(x,y-40*s,s)}${crown(x,y-72*s,s)}`}
+const star=(x,y,s=1)=>`<path class="gd" transform="translate(${x} ${y}) scale(${s})" d="M0-6 1.6-1.9 6-1.9 2.4.8 3.7 5 0 2.4-3.7 5-2.4.8-6-1.9-1.6-1.9Z"/>`;
+const rays=(x,y,a=14,b=26,n=9)=>`<path class="gl" d="${Array.from({length:n},(_,i)=>{const t=Math.PI*(1+i/(n-1));return `M${(x+Math.cos(t)*a).toFixed(1)} ${(y+Math.sin(t)*a).toFixed(1)}L${(x+Math.cos(t)*b).toFixed(1)} ${(y+Math.sin(t)*b).toFixed(1)}`}).join('')}"/>`;
+const tower=(x,y,w,h)=>{const a=w/5;return `<path class="gd st thin" d="M${x-w/2} ${y}V${y-h}h${a}v5h${a}v-5h${a}v5h${a}v-5h${a}V${y}Z"/>`};
+const flag=(x,y)=>`<path class="gl" d="M${x} ${y}v-18"/><path class="wn" d="M${x} ${y-18}l13 4-13 5Z"/>`;
+const sheep=(x,y)=>`<path class="ln thin" d="M${x-5} ${y-4}V${y}M${x+5} ${y-4}V${y}"/><ellipse class="wl st thin" cx="${x}" cy="${y-8}" rx="10" ry="6.5"/><circle class="ik" cx="${x+10}" cy="${y-10}" r="3.4"/>`;
+const wheel=(x,y,r=10)=>`<circle class="wl st" cx="${x}" cy="${y}" r="${r}"/><path class="ln thin" d="M${x-r} ${y}H${x+r}M${x} ${y-r}V${y+r}"/>`;
+const skin=(x,y,s=1,c='ik')=>`<path class="ln thin" d="M${x} 30V${y}"/><path class="${c} st" d="M${x} ${y} q${-15*s} ${22*s} ${-11*s} ${42*s} q${11*s} ${14*s} ${22*s} 0 q${4*s} ${-20*s} ${-11*s} ${-42*s}Z"/>`;
+
+const SCENES={
+ library:{p:bg()+`<rect class="ik" x="120" y="112" width="170" height="6"/><path class="ln" d="M132 118V140M278 118V140"/><rect class="bl st thin" x="150" y="98" width="46" height="14"/><rect class="wl st thin" x="156" y="86" width="40" height="12"/><rect class="ik" x="160" y="76" width="30" height="10"/><rect class="wl st thin" x="214" y="100" width="50" height="12" transform="rotate(-6 239 106)"/><rect class="wl st thin" x="270" y="84" width="6" height="28"/><path class="gd" d="M273 84q-5 -8 0 -15q5 7 0 15Z"/>`+man(80,140,{}),
+          d:rays(239,100,16,44,11)+`<path class="gl" d="M92 112L60 40"/><path class="wn" d="M60 40l-4 14 9-3Z"/><path class="gd st thin" d="M71 96q9 -16 18 0v6h-18Z"/><path class="wnl" d="M80 86q6 -16 18 -12"/>`+star(150,52)+star(205,40,1.3)+star(262,58)},
+ inn:{p:bg()+`<path class="wl st" d="M78 140V92H242V140Z"/><path class="ik st" d="M70 94L160 62L250 94Z"/><rect class="bl st thin" x="146" y="108" width="28" height="32"/><rect class="bl st thin" x="98" y="104" width="20" height="16"/><rect class="bl st thin" x="204" y="104" width="20" height="16"/><path class="ln" d="M266 140V96h18"/><rect class="wl st thin" x="272" y="100" width="18" height="13"/>`+beast(40,142,{cls:'wl'}),
+      d:tower(70,140,30,96)+tower(250,140,30,96)+`<path class="gd st thin" d="M92 66h12v-7h10v7h12v-7h10v7h48v-7h10v7h12v-7h10v7h12v8H92Z"/>`+flag(70,44)+flag(250,44)+flag(160,58)+rays(160,60,26,40,7)},
+ squire:{p:bg()+man(120,140,{fat:1,h:42,hat:'brim'})+beast(205,142,{}),
+         d:crown(120,84,1.2)+`<path class="gl" d="M150 140V70"/><path class="wn" d="M150 70l26 7-26 9Z"/><ellipse class="gl" cx="246" cy="44" rx="42" ry="26"/><path class="gd" d="M220 56q26 -16 52 0Z"/><path class="gl" d="M246 48V30m0 0q-10 -4 -14 4m14 -4q10 -4 14 4m-14 -4q-4 -8 -12 -6m12 6q4 -8 12 -6"/><circle class="gd" cx="196" cy="78" r="3"/><circle class="gd" cx="208" cy="66" r="4.5"/>`},
+ mills:{p:bg()+mill(86,138,.8)+mill(250,139,.72)+mill(168,142,1.18),
+        d:giant(86,138,.8)+giant(250,139,.72)+giant(168,142,1.18)},
+ friars:{p:bg()+rider(52,142,{},{hat:'hood',cls:'ik'})+rider(118,142,{},{hat:'hood',cls:'ik'})+`<rect class="wl st" x="196" y="88" width="88" height="40" rx="5"/><rect class="bl st thin" x="228" y="96" width="24" height="18"/>`+wheel(214,131)+wheel(268,131),
+         d:`<path class="wn st thin" d="M40 100l9 -36 9 36Z"/><path class="wn st thin" d="M106 100l9 -36 9 36Z"/>`+star(49,88,.6)+star(115,88,.6)+crown(240,104,.9)+star(180,50)+star(292,62,1.2)+star(150,30,.8)+`<path class="gl" d="M196 82q44 -22 88 0"/>`},
+ andres:{p:bg()+`<rect class="ik" x="64" y="70" width="12" height="70"/><circle class="bl st" cx="70" cy="56" r="34"/>`+man(92,140,{h:36})+`<path class="ln thin" d="M78 112h28M78 120h28"/>`+man(200,140,{fat:1,hat:'brim'})+`<path class="ln" d="M213 110q24 -30 44 -8"/>`,
+         d:`<ellipse class="gl" cx="92" cy="94" rx="11" ry="3.5"/><path class="wn st thin" d="M172 112q-4 14 8 24q12 -10 8 -24Z"/><path class="wnl" d="M200 88q8 -22 26 -18"/><path class="gl" d="M213 110L262 74"/>`+star(262,74,.9)+star(140,44)},
+ sheep:{p:bg(`<circle class="wl" cx="70" cy="118" r="26"/><circle class="wl" cx="118" cy="110" r="30"/><circle class="wl" cx="212" cy="112" r="30"/><circle class="wl" cx="258" cy="120" r="24"/>`)+[[44,140],[76,146],[104,138],[132,148],[60,160],[196,140],[226,148],[254,138],[282,150],[212,164],[116,166]].map(a=>sheep(a[0],a[1])).join(''),
+        d:`<path class="gl" d="M50 120V70M82 122V62M112 116V58M204 118V60M236 122V66M266 118V72"/><path class="wn" d="M82 62l18 5-18 6ZM236 66l-18 5 18 6Z"/><path class="gd st thin" d="M94 128a10 9 0 0 1 20 0ZM244 128a10 9 0 0 1 20 0ZM50 150a10 9 0 0 1 20 0ZM272 140a10 9 0 0 1 20 0Z"/>`+star(160,40,1.4)},
+ basin:{p:bg(`<path class="ln thin" style="stroke:var(--anil)" d="M40 20l-8 22M90 12l-8 22M150 24l-8 22M210 10l-8 22M262 22l-8 22M296 40l-8 22M60 60l-8 22M250 64l-8 22"/>`)+rider(150,142,{},{fat:1})+`<path class="wl st" d="M131 86h32q-2 -13 -16 -13t-16 13Z"/><path class="ln" d="M126 86h42"/>`,
+        d:rays(147,80,22,46,11)+`<path class="gd st thin" d="M129 87h36q-2 -17 -18 -17t-18 17Z"/><path class="gd st thin" d="M124 87h46"/><path class="wnl" d="M147 70q4 -24 26 -22"/>`+star(84,46)+star(232,52,1.2)},
+ chain:{p:bg()+[50,90,130,170,210].map(x=>man(x,140,{cls:'sk',h:42})).join('')+`<path class="ln thin" d="M50 106q20 10 40 0q20 10 40 0q20 10 40 0q20 10 40 0"/>`+man(268,140,{hat:'brim',cls:'ik'})+`<path class="ln" d="M282 140V70"/>`,
+        d:`<path class="gl" d="M64 104l8 10M72 104l-8 10M104 104l8 10M112 104l-8 10M144 104l8 10M152 104l-8 10M184 104l8 10M192 104l-8 10"/>`+[50,90,130,170,210].map((x,i)=>star(x,74-(i%2)*8,.9)).join('')+`<path class="gl" d="M24 140V52"/><path class="wn" d="M24 52l30 8-30 10Z"/>`},
+ bill:{p:bg()+`<path class="wl st" d="M60 140V60H260V140Z"/><path class="bl st thin" d="M186 140V96q0 -18 22 -18t22 18V140Z"/>`+man(130,140,{fat:1,cls:'wl'})+`<path class="wl st thin" d="M146 104h20v44q-10 6 -20 0Z"/><path class="ln thin" d="M150 112h12M150 119h12M150 126h12M150 133h12"/>`,
+       d:`<path class="gd st thin" d="M52 62V44h18v8h18v-8h18v8h18v-8h18v8h18v-8h18v8h18v-8h18v8h18v-8h18v18Z"/>`+crown(130,84,1.1)+`<circle class="gl" cx="160" cy="100" r="6"/><path class="gl" d="M160 106v14m0 -5h5m-5 5h5"/>`+flag(60,44)+flag(260,44)},
+ sierra:{p:bg(`<path class="sk st" d="M-4 140L46 70L88 112L130 54L182 140Z"/>`)+man(214,140,{fat:1,h:44})+`<path class="bl" d="M205 96q9 -12 18 0Z"/><path class="ln" d="M240 140V86m-6 4l6 -8l6 8"/><ellipse class="wl st thin" cx="274" cy="130" rx="16" ry="9"/><circle class="wl st thin" cx="290" cy="126" r="5.5"/><path class="ln thin" d="M266 138v6M282 138v6"/>`,
+         d:`<circle class="gl" cx="214" cy="104" r="42"/>`+crown(214,84,1.2)+tower(276,140,26,70)+flag(276,70)+`<circle class="wn" cx="190" cy="128" r="4"/><circle class="wn" cx="238" cy="124" r="4"/><circle class="wn" cx="226" cy="136" r="3"/>`+star(150,40)+star(256,34,1.2)},
+ wineskins:{p:`<rect class="sk" width="320" height="180"/><rect class="ik" x="0" y="26" width="320" height="6"/><rect class="gr st" x="-4" y="150" width="328" height="34"/>`+skin(120,44,.9)+skin(176,40,1.35)+skin(238,46,.85)+skin(284,42,.7)+man(52,150,{h:44})+`<path class="ln" d="M62 122L96 96"/>`,
+            d:face(176,66,1.5)+crown(176,44,1.5)+`<circle class="wn" cx="150" cy="126" r="4"/><circle class="wn" cx="166" cy="140" r="5.5"/><circle class="wn" cx="196" cy="134" r="4"/><circle class="wn" cx="140" cy="146" r="3"/><path class="gl" d="M62 122L96 96"/>`+star(98,92,.9)},
+ cage:{p:bg()+`<rect class="wl st" x="96" y="66" width="104" height="58"/><path class="ln thin" d="M112 66V124M128 66V124M144 66V124M160 66V124M176 66V124M190 66V124"/><path class="ln" d="M200 118h36"/>`+wheel(118,128,12)+wheel(180,128,12)+beast(262,142,{cls:'wl'})+man(40,140,{hat:'hood',cls:'ik'})+man(66,140,{hat:'hood',cls:'ik',fat:1,h:42}),
+       d:rays(148,62,34,58,11)+star(60,44,1.2)+star(240,36,1.4)+star(290,70)+star(148,24)+`<ellipse class="gl" cx="100" cy="150" rx="30" ry="8"/><ellipse class="gl" cx="196" cy="152" rx="34" ry="9"/>`}
+};
+const draw=k=>`<svg viewBox="0 0 320 180" role="img" aria-hidden="true"><g>${SCENES[k].p}</g><g class="dreamL">${SCENES[k].d}</g></svg>`;
+/* ---------- the road: L is the plain reading, R is the dream. fx = glory, body, purse, sancho ---------- */
+const OPEN=[
+ {k:'library',place:'A village in La Mancha',ch:'ch. 1',who:'The housekeeper',
+  plain:'A country gentleman near fifty, and far too many books.',dream:'A knight who has not yet been named.',
+  ask:'You have read romances of chivalry from dusk to dawn until your brain dried up. The housekeeper wants the books out of the house.',
+  L:{t:'Sell a few. Get some sleep',fx:[-8,6,10,0],out:'You sell three volumes and sleep nine hours. The world remains unrescued.',deed:'sold three romances for a good night\'s sleep'},
+  R:{t:'Polish great-grandfather\'s armor',fx:[14,0,-6,0],out:'The helmet has no visor, so you build one of pasteboard and decide not to test it twice. Your nag becomes Rocinante. You become Don Quixote.',deed:'armed himself in rust and pasteboard'},
+  book:'He spends a week on the pasteboard visor, tests it with his sword, destroys it in one stroke, rebuilds it, and declines to test it again.'},
+ {k:'inn',place:'A roadside inn',ch:'ch. 2–3',who:'The innkeeper',
+  plain:'An inn. Mule drivers. A smell of salt cod.',dream:'A castle with four towers and spires of shining silver.',
+  ask:'You cannot seek adventures until someone dubs you a knight. The only authority for miles is a fat innkeeper.',
+  L:{t:'Pay for supper and a bed',fx:[-8,8,-10,0],out:'You eat the cod, pay the bill, and sleep as an untitled man. The innkeeper is almost disappointed.',deed:'paid for his supper like a common traveller'},
+  R:{t:'Kneel. Ask the castellan to knight you',fx:[16,-8,0,0],out:'You keep vigil over your armor in the yard, brain two mule drivers who touch it, and are knighted out of an account book so that you will leave.',deed:'was dubbed a knight by an innkeeper reading from his accounts'},
+  book:'The innkeeper, a retired rogue, plays along for a laugh and hurries the ceremony once the stones start flying.'},
+ {k:'squire',place:'Home, briefly',ch:'ch. 7',who:'Good sense',
+  plain:'Sancho Panza, a farmer. A wife, children, one donkey.',dream:'A squire, as every knight errant must have.',
+  ask:'Your neighbor is an honest man with very little salt in his brainpan. He will ride with you. What do you promise him?',
+  L:{t:'Honest monthly wages',fx:[-4,0,-12,8],out:'Sancho counts the coins twice and saddles his donkey. No knight in any book ever paid wages. You feel slightly less like one.',deed:'hired a squire at honest wages'},
+  R:{t:'An island to govern',fx:[6,0,0,16],out:'Sancho leaves without saying goodbye to his wife, already wondering how his Teresa will look as a queen.',deed:'promised his squire an island he did not own'},
+  book:'The island keeps Sancho on the road for two volumes. He does get one in the end, as a prank, and governs it well.'},
+ {k:'mills',place:'Campo de Montiel',ch:'ch. 8',
+  plain:'Thirty or forty windmills on the plain.',dream:'Thirty or more monstrous giants, with arms two leagues long.',
+  ask:'“Look, your worship,” says Sancho, “those are not giants but windmills, and what look like arms are the sails.”',
+  L:{t:'Ride around the windmills',fx:[-12,0,0,6],out:'You pass in silence. The sails turn. For the rest of the day you are sure one of them laughed.',deed:'rode politely around thirty giants'},
+  R:{t:'Charge! Do not flee, cowards!',fx:[18,-22,0,-4],out:'The wind rises, a sail catches your lance, and horse and knight go rolling across the field. Plainly an enchanter turned the giants into mills to rob you of the victory.',deed:'charged the giants of Montiel at full gallop'},
+  book:'The most famous scene in the novel lasts about two pages. He blames the wizard Frestón, who also stole his library.'}
+];
+const ROAD=[
+ {k:'friars',place:'The road to Puerto Lápice',ch:'ch. 8–9',
+  plain:'Two friars on mules. Behind them, a lady’s coach.',dream:'Enchanters carrying off a stolen princess.',
+  ask:'Black robes, dust masks, a coach with a lady inside. It is either a road with people on it or a kidnapping.',
+  L:{t:'Let the travellers pass',fx:[-10,4,0,4],out:'The friars nod. The lady does not look up from her window. Nobody is rescued, including you.',deed:'let a princess go unrescued'},
+  R:{t:'Unhand the princess, monsters!',fx:[14,-12,0,-10],out:'One friar is unhorsed. Sancho claims his robe as spoils and is kicked flat by the mule boys. You then duel the lady’s Basque squire and lose half an ear.',deed:'delivered a princess who had not noticed she was captive'},
+  book:'Cervantes stops this duel in mid-swing because the manuscript “runs out.” The narrator finds the rest in a Toledo market, in Arabic, by one Cide Hamete Benengeli.'},
+ {k:'andres',place:'A wood near Quintanar',ch:'ch. 4',
+  plain:'A farmer flogging his shepherd boy over lost sheep.',dream:'A villain knight tormenting the helpless.',
+  ask:'The boy is tied to an oak. The farmer says he is careless. The boy says he is owed nine months’ wages.',
+  L:{t:'It is not your flock. Ride on',fx:[-12,0,0,2],out:'The cries follow you for half a league. Your armor has never felt heavier.',deed:'left a wrong unrighted'},
+  R:{t:'Untie him and pay him, on your oath',fx:[12,0,0,-5],out:'The farmer swears to pay every coin. You ride away glowing. Behind you he ties the boy back up and doubles the lashes.',deed:'righted a wrong that was promptly wronged again'},
+  book:'The boy, Andrés, turns up again in chapter 31 and begs Don Quixote never to help him again.'},
+ {k:'sheep',place:'A dusty plain',ch:'ch. 18',teeth:4,
+  plain:'Two large flocks of sheep raising dust.',dream:'Two armies about to join battle, Alifanfarón against Pentapolín of the Naked Arm.',
+  ask:'You can name every knight in both hosts. Sancho hears only bleating.',
+  L:{t:'Listen to the bleating',fx:[-10,0,0,6],out:'You listen. It does sound like sheep. Two great armies go unfought and the afternoon goes flat.',deed:'declined a battle on the grounds that it was sheep'},
+  R:{t:'For Pentapolín! Into the fray!',fx:[14,-20,-4,0],out:'You spear seven sheep. The shepherds answer with slings, and a stone the size of a fist removes most of your molars.',deed:'routed an army of mutton and paid for it in teeth'},
+  book:'Afterwards Sancho counts what teeth his master has left and names him the Knight of the Sorrowful Face.'},
+ {k:'basin',place:'The highway, in rain',ch:'ch. 21',
+  plain:'A barber on a donkey with his brass basin on his head to keep off the rain.',dream:'A knight wearing the golden helmet of Mambrino.',
+  ask:'It shines like gold from a mile off. Whoever wears Mambrino’s helmet cannot be wounded.',
+  L:{t:'It is a basin. Leave the barber be',fx:[-8,0,0,2],out:'The barber rides by, dry and unbothered. A legend goes unworn.',deed:'mistook the helmet of Mambrino for a basin'},
+  R:{t:'Yield the helmet, knight!',fx:[16,0,4,6],out:'The barber runs for his life. You crown yourself with the basin, and Sancho trades up his donkey’s saddle. To keep the peace he calls the thing a basin-helmet.',deed:'won the helmet of Mambrino from a terrified barber'},
+  book:'Sancho’s word is baciyelmo, basin-helmet. Two people look at one object and each is a little right.'},
+ {k:'chain',place:'The king’s road',ch:'ch. 22',
+  plain:'Twelve convicts chained by the neck, marching to the king’s galleys.',dream:'Men forced against their will, which no knight can allow.',
+  ask:'You ask each man his crime. The answers are thieving, pimping, and one Ginés de Pasamonte who is writing his memoirs.',
+  L:{t:'The king’s justice is not your business',fx:[-12,0,0,6],out:'The chain clanks past. Ginés spits. Sancho breathes again, because the Holy Brotherhood hangs men for less.',deed:'let the king’s justice clank past'},
+  R:{t:'Set them free, in Dulcinea’s name',fx:[12,-16,-8,-12],out:'You scatter the guards and ask the freed men to carry their chains to El Toboso in thanks. They stone you instead and take Sancho’s coat.',deed:'freed twelve convicts who thanked him with stones'},
+  book:'“It seems harsh to make slaves of those whom God and nature made free.” His noblest speech, and his worst idea. Ginés later steals Sancho’s donkey.'},
+ {k:'bill',place:'The inn, next morning',ch:'ch. 17',
+  plain:'An innkeeper holding out a bill for bed, straw and barley.',dream:'A castellan insulting his guest. Knights errant have never paid for lodging.',
+  ask:'You have read every book of chivalry there is, and not one knight in them ever settled a tab.',
+  L:{t:'Pay the innkeeper',fx:[-6,0,-16,6],out:'You pay. Sancho stares at you as if you had been replaced by a sensible cousin.',deed:'settled an innkeeper’s bill in full'},
+  R:{t:'Ride out. Knights do not pay',fx:[8,0,0,-18],out:'You gallop off with your honor intact. Sancho is caught at the gate and tossed in a blanket by four wool carders until his dinner changes its mind.',deed:'left an inn unpaid and his squire airborne'},
+  book:'Sancho brings up the blanket-tossing for the next nine hundred pages.'}
+];
+const CLOSE=[
+ {k:'sierra',place:'Sierra Morena',ch:'ch. 25–26',
+  plain:'Aldonza Lorenzo, a farm girl of El Toboso who salts pork and can out-shout a field hand.',dream:'Dulcinea del Toboso, empress of La Mancha, for whom knights go mad in the mountains.',
+  ask:'Every knight needs a lady to suffer for. You have spoken to yours perhaps never. Sancho, who knows her, is trying not to laugh.',
+  L:{t:'Send a short, sane letter',fx:[-8,6,0,4],out:'“Dear Aldonza, I hope the pigs are well.” Sancho promises to deliver it. He will not have to lie about anything, which bores him.',deed:'wrote a sensible letter to a farm girl'},
+  R:{t:'Do penance: shirt-tails, somersaults, sonnets',fx:[16,-10,0,-6],out:'You strip to your shirt, turn cartwheels on the rocks and carve verses into the trees. Sancho rides off with a love letter he has already forgotten to bring.',deed:'went mad on purpose in the Sierra Morena for a lady he had never met'},
+  book:'He decides to go mad for no reason at all, since anyone can go mad with a reason. Sancho invents Dulcinea’s reply.'},
+ {k:'wineskins',place:'A bedroom at the inn',ch:'ch. 35',
+  plain:'Your bedroom, hung with full skins of red wine.',dream:'The giant Pandafilando, enemy of the Princess Micomicona.',
+  ask:'You are asleep, in your shirt, sword in hand. The giant looms. His blood, when you strike, is suspiciously cheap.',
+  L:{t:'Wake up',fx:[-8,4,0,0],out:'You open your eyes to a dark room and some leather, and go back to bed. The princess’s kingdom stays conquered.',deed:'woke up before the giant'},
+  R:{t:'Strike off the giant’s head!',fx:[14,0,-18,4],out:'The floor runs red. Sancho hunts on hands and knees for the giant’s head, since his island depends on it. The innkeeper counts his dead wineskins and weeps.',deed:'beheaded a giant made of red wine'},
+  book:'The princess is Dorotea in costume. The priest and the barber staged the whole quest to lure him home.'},
+ {k:'cage',place:'The road home',ch:'ch. 46–47',last:1,
+  plain:'Your priest and your barber in masks, a wooden cage, an ox-cart.',dream:'An enchantment. Slow, but knights have been carried off in stranger ways.',
+  ask:'They take you in your sleep. A voice prophesies glory. The cage smells of oxen.',
+  L:{t:'These are my neighbors. Open this cage',fx:[-10,5,0,0],out:'The priest lowers his mask and says it is for your own good. You ride home in the cage anyway, awake and furious.',deed:'',end:'awake'},
+  R:{t:'I am enchanted. Proceed',fx:[10,0,0,0],out:'You sit upright in the hay like a man in a carriage. Six days later you arrive on a Sunday, at noon, through the middle of the village square.',deed:'',end:'enchanted'},
+  book:'Part One ends here. Ten years later Cervantes sent him out again.'}
+];
+const ENDS={
+ enchanted:{tail:'was carried home in an ox-cart, enchanted and entirely undefeated',book:'This is how Part One ends. The housekeeper feeds him eggs, the priest hopes he is cured, and Sancho tells his wife that nothing in the world is finer than being squire to a knight errant.'},
+ awake:{tail:'was carted home by his friends, awake and furious',book:'In the novel he never doubts the enchantment. Seeing the cage for what it is would have ended the book at the halfway mark.'},
+ body:{place:'The sally ends',tail:'went home slung across a donkey',book:'It happens twice in Part One. After the first beating a neighbor finds him in the road and carries him home on his donkey, reciting ballads the whole way.'},
+ purse:{place:'The sally ends',tail:'walked home without a coin',book:'In the novel Don Quixote almost never pays. Sancho handles the money, and in Part Two he asks for a salary in writing.'},
+ sancho:{place:'The sally ends',tail:'lost the best squire a knight ever had',book:'Sancho threatens to go home many times and never does. By the end he is the one begging his master to ride out again.'},
+ glory:{place:'The sally ends',tail:'went home to be sensible',book:'The novel ends like this, on purpose. Don Quixote wakes up sane, takes back his own name, Alonso Quijano, and dies in his bed. Sancho weeps and begs him to get up.'}
+};
+/* ---------- engine ---------- */
+const $=id=>document.getElementById(id), KEYS=['glory','body','purse','sancho'];
+const BYK={}; [...OPEN,...ROAD,...CLOSE].forEach(c=>BYK[c.k]=c);
+const card=$('card'), btnL=$('btnL'), btnR=$('btnR'), foot=$('choices');
+let S, drag=null;
+
+function fresh(){
+  const r=ROAD.map(c=>c.k);
+  for(let i=r.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[r[i],r[j]]=[r[j],r[i]]}
+  return {phase:'title',deck:[...OPEN.map(c=>c.k),...r.slice(0,5),...CLOSE.map(c=>c.k)],i:0,
+    m:{glory:36,body:72,purse:58,sancho:60},deeds:[],teeth:0,rights:0,won:0,pick:null,dead:null,end:null};
+}
+const cur=()=>BYK[S.deck[S.i]];
+const dreamLayer=()=>$('scene').querySelector('.dreamL');
+
+function gauges(){
+  document.querySelectorAll('.gauge').forEach(g=>{const v=S.m[g.dataset.k];
+    g.querySelector('i').style.width=v+'%'; g.classList.toggle('low',v<25)});
+  const fx=S.phase==='out'?cur()[S.pick].fx:null;
+  document.querySelectorAll('.gauge em').forEach((e,i)=>{const d=fx?fx[i]:0;
+    e.textContent=d?(d>0?'+':'−')+Math.abs(d):''; e.classList.toggle('neg',d<0)});
+}
+function preview(side){
+  const fx=side?cur()[side].fx:null;
+  document.querySelectorAll('.gauge').forEach((g,i)=>{
+    g.classList.toggle('touch',!!fx&&fx[i]!==0); g.classList.toggle('big',!!fx&&Math.abs(fx[i])>=14)});
+}
+function show(id){['title','card','end'].forEach(k=>$(k).hidden=k!==id)}
+
+function paint(){
+  gauges(); preview(null);
+  if(S.phase==='title'){show('title'); foot.hidden=true; return}
+  if(S.phase==='end'){paintEnd(); return}
+  const c=cur(); show('card'); foot.hidden=false;
+  $('place').textContent=c.place+' · '+c.ch;
+  $('count').textContent=(S.i+1)+' of '+S.deck.length;
+  $('scene').innerHTML=draw(c.k);
+  const out=S.phase==='out';
+  $('face').hidden=out; $('back').hidden=!out; foot.classList.toggle('off',out);
+  card.classList.remove('snap','gone'); card.style.transform='';
+  if(out){
+    const o=c[S.pick]; card.classList.remove('rest');
+    dreamLayer().style.opacity=S.pick==='R'?1:0;
+    $('out').textContent=o.out; $('book').textContent=c.book;
+    $('next').textContent=(S.dead||c.last)?'See how it ends':'Ride on';
+    $('next').focus({preventScroll:true});
+  }else{
+    card.classList.add('rest');
+    $('whoL').textContent=(c.who||'Sancho')+' sees'; $('tagL').textContent=c.who||'Sancho';
+    $('plain').textContent=c.plain; $('dreamTxt').textContent=c.dream; $('prompt').textContent=c.ask;
+    $('lblL').textContent=c.L.t; $('lblR').textContent=c.R.t;
+    setLean(0,true);
+  }
+}
+
+function setLean(dx,rest){
+  const l=Math.max(-1,Math.min(1,dx/110)), d=dreamLayer();
+  card.style.transform=dx?`translateX(${dx}px) rotate(${dx*.045}deg)`:'';
+  if(d)d.style.opacity=rest?'':(l>0?.3+.7*l:.3*(1+l));
+  document.querySelector('.see.plain').style.opacity=l>0?1-.65*l:1;
+  document.querySelector('.see.dream').style.opacity=l<0?1+.65*l:1;
+  btnL.classList.toggle('lean',l<-.4); btnR.classList.toggle('lean',l>.4);
+  preview(Math.abs(l)>.18?(l>0?'R':'L'):null);
+}
+function settle(){
+  if(S.phase!=='card')return;
+  card.classList.add('snap'); setLean(0,true);
+  setTimeout(()=>{if(S.phase==='card'&&!drag){card.classList.remove('snap');card.classList.add('rest')}},290);
+}
+function pick(side){
+  if(S.phase!=='card')return;
+  const c=cur(), o=c[side];
+  KEYS.forEach((k,i)=>S.m[k]=Math.max(0,Math.min(100,S.m[k]+o.fx[i])));
+  if(side==='R'){S.rights++; if(c.teeth)S.teeth+=c.teeth}
+  S.won+=Math.max(0,o.fx[0]);
+  if(o.deed)S.deeds.push({t:o.deed,w:side==='R'?2:1,i:S.i});
+  S.pick=side; S.phase='out';
+  S.dead=['body','purse','sancho','glory'].find(k=>S.m[k]<=0)||null;
+  card.classList.remove('rest','snap'); card.classList.add('gone');
+  card.style.transform=`translateX(${side==='R'?130:-130}%) rotate(${side==='R'?14:-14}deg)`;
+  setTimeout(paint,still?0:230);
+}
+function next(){
+  if(S.phase!=='out')return;
+  const c=cur();
+  if(S.dead){S.end=S.dead;S.phase='end'}
+  else if(c.last){S.end=c[S.pick].end;S.phase='end'}
+  else{S.i++;S.phase='card';S.pick=null}
+  paint();
+}
+
+const ROMAN=['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII','XIII','XIV'];
+function chapter(){
+  const e=ENDS[S.end];
+  const best=S.deeds.slice().sort((a,b)=>b.w-a.w||a.i-b.i).slice(0,3).sort((a,b)=>a.i-b.i).map(d=>d.t);
+  const list=best.length>1?best.slice(0,-1).join(', ')+', and '+best[best.length-1]:(best[0]||'rode out');
+  return {head:'Chapter '+ROMAN[Math.min(S.i,13)]+'.',text:' In which the ingenious gentleman '+list+'; and of how he '+e.tail+'; with other matters worthy of record.'};
+}
+function paintEnd(){
+  show('end'); foot.hidden=true;
+  const e=ENDS[S.end], ch=chapter(), r=S.rights/(S.i+1);
+  $('endPlace').textContent=e.place||'Part One ends';
+  $('chap').innerHTML='<i>'+ch.head+'</i>'; $('chap').append(ch.text);
+  $('epithet').textContent=r>=.7?'the Knight of the Sorrowful Face':r>=.4?'the Knight of the Basin-Helmet':'Alonso Quijano the Good';
+  $('tGlory').textContent=S.won; $('tTeeth').textContent=S.teeth;
+  $('endBook').textContent=e.book; $('copy').textContent='Copy chapter';
+}
+
+/* input: drag the leaf, tap a voice, or use the arrow keys */
+card.addEventListener('pointerdown',e=>{
+  if(S.phase!=='card'||e.target.closest('button'))return;
+  drag={x:e.clientX,id:e.pointerId,dx:0};
+  try{card.setPointerCapture(e.pointerId)}catch(_){}
+  card.classList.remove('rest','snap');
+});
+card.addEventListener('pointermove',e=>{
+  if(!drag||e.pointerId!==drag.id)return;
+  drag.dx=e.clientX-drag.x; setLean(drag.dx,false);
+});
+card.addEventListener('pointerup',()=>{
+  if(!drag)return; const dx=drag.dx; drag=null;
+  if(Math.abs(dx)>84)pick(dx>0?'R':'L'); else settle();
+});
+card.addEventListener('pointercancel',()=>{if(drag){drag=null;settle()}});
+[[btnL,'L'],[btnR,'R']].forEach(([b,side])=>{
+  b.addEventListener('click',()=>pick(side));
+  const on=()=>{if(S.phase!=='card'||drag)return;card.classList.remove('rest');
+    const d=dreamLayer(); if(d)d.style.opacity=side==='R'?1:0; preview(side)};
+  const off=()=>{if(S.phase!=='card'||drag)return;const d=dreamLayer(); if(d)d.style.opacity='';card.classList.add('rest');preview(null)};
+  b.addEventListener('mouseenter',on); b.addEventListener('focus',on);
+  b.addEventListener('mouseleave',off); b.addEventListener('blur',off);
+});
+document.addEventListener('keydown',e=>{
+  if(S.phase==='card'&&e.key==='ArrowLeft')pick('L');
+  else if(S.phase==='card'&&e.key==='ArrowRight')pick('R');
+});
+$('next').addEventListener('click',next);
+$('start').addEventListener('click',()=>{S.phase='card';paint()});
+$('again').addEventListener('click',()=>{S=fresh();S.phase='card';paint()});
+$('copy').addEventListener('click',()=>{
+  const ch=chapter(), text=ch.head+ch.text+'\n(A Two-Minute Sally: Don Quixote, Part One)', b=$('copy');
+  const fallback=()=>{const r=document.createRange();r.selectNodeContents($('chap'));const s=getSelection();s.removeAllRanges();s.addRange(r);b.textContent='Selected: copy it'};
+  try{navigator.clipboard.writeText(text).then(()=>{b.textContent='Copied'},fallback)}catch(_){fallback()}
+});
+
+function boot(d){
+  S=(d&&d.S&&d.S.deck)?d.S:fresh();
+  $('titleScene').innerHTML=draw('mills'); $('title').classList.add('rest');
+  paint();
+}
+try{window.claude?.hot?.snapshot?.(()=>({S}))}catch(_){}
+if(window.claude?.hot?.ready)window.claude.hot.ready(boot); else boot(window.claude?.hot?.data??{});
+</script>
+</body>
+</html>
