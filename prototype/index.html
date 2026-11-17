@@ -5,7 +5,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>A Two-Minute Sally</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,400;0,500;0,700;1,400&family=Alegreya+Sans:wght@500;700&family=IM+Fell+English:ital@0;1&display=swap">
+<script>
+/* If anything fails, say so on the page instead of leaving it blank. */
+window.__sallyErr=function(msg){
+  try{
+    var b=document.getElementById('oops');
+    if(!b){b=document.createElement('div');b.id='oops';b.setAttribute('role','alert');
+      b.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99;padding:12px 16px;background:#8d1f3a;color:#fff;font:15px/1.35 Georgia,serif';
+      (document.body||document.documentElement).appendChild(b);}
+    b.textContent='The game hit a problem and may not work. Please send this line to Claude: '+msg;
+  }catch(e){}
+};
+window.addEventListener('error',function(e){window.__sallyErr((e&&e.message)||'unknown error')});
+window.addEventListener('unhandledrejection',function(e){var r=e&&e.reason;window.__sallyErr('promise: '+((r&&r.message)||r||'unknown'))});
+</script>
 <style>
 /* Layout: one screen. Four fortunes on top, one leaf of the book in the middle,
    two voices at the bottom. Whitewash and anil blue are the plain world of La Mancha;
@@ -13,9 +26,9 @@
 :root{
   --sky:#e6ecf6; --wall:#fcfcf9; --ink:#1b2440; --anil:#2747b0; --earth:#d9b961;
   --gold:#d99a00; --wine:#8d1f3a; --mute:#59617d; --line:#c5cde0; --shade:#eef1f7;
-  --display:"IM Fell English","Iowan Old Style","Palatino Linotype",Georgia,serif;
-  --body:"Alegreya","Iowan Old Style",Georgia,serif;
-  --label:"Alegreya Sans","Gill Sans","Trebuchet MS",sans-serif;
+  --display:"IM Fell English","Hoefler Text",Baskerville,Palatino,Georgia,serif;
+  --body:"Alegreya",Charter,Palatino,"Iowan Old Style",Georgia,serif;
+  --label:"Alegreya Sans","Gill Sans","Avenir Next","Trebuchet MS",sans-serif;
   padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px);
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
@@ -29,7 +42,7 @@
 html,body{height:100%}
 body{margin:0;background:var(--sky);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.35;
   -webkit-tap-highlight-color:transparent;overscroll-behavior:none}
-#app{height:100%;max-width:460px;margin:0 auto;display:flex;flex-direction:column;gap:10px;
+#app{min-height:100%;max-width:460px;margin:0 auto;display:flex;flex-direction:column;gap:10px;
   padding-block:10px 12px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 
 /* fortunes */
@@ -46,15 +59,15 @@ body{margin:0;background:var(--sky);color:var(--ink);font-family:var(--body);fon
 .gauge.touch.big .pip{width:11px;height:11px}
 
 /* the leaf */
-#stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;position:relative}
-.leaf{width:100%;max-height:100%;background:var(--wall);border:1.5px solid var(--ink);border-radius:6px;
-  box-shadow:5px 6px 0 var(--anil);padding:14px 16px 16px;display:flex;flex-direction:column;gap:10px;overflow:auto}
+#stage{flex:1 0 auto;display:flex;align-items:center;justify-content:center;position:relative}
+.leaf{width:100%;background:var(--wall);border:1.5px solid var(--ink);border-radius:6px;
+  box-shadow:5px 6px 0 var(--anil);padding:14px 16px 16px;display:flex;flex-direction:column;gap:10px}
 #card{touch-action:pan-y;user-select:none;-webkit-user-select:none;cursor:grab;will-change:transform}
 #card.snap{transition:transform .28s cubic-bezier(.2,.8,.2,1)}
 #card.gone{transition:transform .22s ease-in,opacity .22s ease-in;opacity:0}
 .place{font:500 .74rem/1.2 var(--label);letter-spacing:.1em;text-transform:uppercase;color:var(--mute);display:flex;justify-content:space-between;gap:8px}
 .scene{border:1.5px solid var(--ink);border-radius:3px;overflow:hidden;background:var(--shade);flex:0 1 auto;min-height:0}
-.scene svg{display:block;width:100%;height:auto;max-height:30vh}
+.scene svg{display:block;width:100%;height:auto;max-height:max(30vh,130px)}
 .sees{display:grid;gap:5px}
 .see{margin:0;font-size:.98rem;transition:opacity .15s}
 .see b{font:700 .66rem/1 var(--label);letter-spacing:.1em;text-transform:uppercase;margin-right:6px;white-space:nowrap}
@@ -109,7 +122,7 @@ h1 em{color:var(--anil)}
 .tally li{border:1px solid var(--line);border-radius:4px;padding:7px 8px;font:500 .7rem/1.15 var(--label);letter-spacing:.06em;text-transform:uppercase;color:var(--mute)}
 .tally strong{display:block;font:700 1.45rem/1 var(--body);color:var(--ink);font-variant-numeric:lining-nums tabular-nums;margin-bottom:3px}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-@media (max-height:640px){body{font-size:15.5px}.leaf{padding:10px 13px 12px;gap:7px}.scene svg{max-height:25vh}.choice{min-height:58px}}
+@media (max-height:640px){body{font-size:15.5px}.leaf{padding:10px 13px 12px;gap:7px}.scene svg{max-height:max(25vh,120px)}.choice{min-height:58px}}
 @media (prefers-reduced-motion:reduce){.rest .dreamL{animation:none;opacity:.35}#card.snap,#card.gone,.gauge .bar i{transition:none}}
 </style>
 </head>
@@ -131,6 +144,7 @@ h1 em{color:var(--anil)}
       <p class="how"><b style="font:700 .66rem/1 var(--label);letter-spacing:.1em;text-transform:uppercase;color:var(--gold);display:block;margin-bottom:4px">How to play</b>Drag the page left for the plain truth or right for the dream, or tap a voice below. If any of the four fortunes above runs dry, the sally is over.</p>
       <button class="btn" id="start">Sally forth</button>
       <p class="fine">Thirteen scenes from the 1605 novel. About two minutes.</p>
+      <p class="fine" id="stuck">If the button does nothing, this browser has not started the game. Reload the page, or open the link in Safari or Chrome.</p>
     </section>
 
     <section id="card" class="leaf rest" hidden aria-live="polite">
@@ -355,6 +369,7 @@ function show(id){['title','card','end'].forEach(k=>$(k).hidden=k!==id)}
 
 function paint(){
   gauges(); preview(null);
+  if(S.phase!=='out'){try{window.scrollTo(0,0)}catch(_){}}
   if(S.phase==='title'){show('title'); foot.hidden=true; return}
   if(S.phase==='end'){paintEnd(); return}
   const c=cur(); show('card'); foot.hidden=false;
@@ -472,10 +487,30 @@ $('copy').addEventListener('click',()=>{
 function boot(d){
   S=(d&&d.S&&d.S.deck)?d.S:fresh();
   $('titleScene').innerHTML=draw('mills'); $('title').classList.add('rest');
+  $('stuck').hidden=true;
   paint();
 }
-try{window.claude?.hot?.snapshot?.(()=>({S}))}catch(_){}
-if(window.claude?.hot?.ready)window.claude.hot.ready(boot); else boot(window.claude?.hot?.data??{});
+/* Start at once. Nothing below is allowed to stop the game from starting. */
+boot({});
+/* Optional: keep a run in progress when the page is republished while someone has it open. */
+try{
+  var hot=window.claude&&window.claude.hot;
+  if(hot){
+    if(typeof hot.snapshot==='function')hot.snapshot(function(){return {S:S}});
+    var back=function(d){if(d&&d.S&&d.S.deck&&d.S.phase!=='title'){S=d.S;paint()}};
+    if(typeof hot.ready==='function')hot.ready(back); else if(hot.data)back(hot.data);
+  }
+}catch(_){}
+/* Web fonts are decoration. Fetch them after the first paint so a slow font host can never hold the page. */
+function fonts(){
+  try{
+    var l=document.createElement('link'); l.rel='stylesheet'; l.media='print';
+    l.href='https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,400;0,500;0,700;1,400&family=Alegreya+Sans:wght@500;700&family=IM+Fell+English:ital@0;1&display=swap';
+    l.onload=function(){l.media='all'};
+    document.head.appendChild(l);
+  }catch(_){}
+}
+if(document.readyState==='complete')setTimeout(fonts,60); else window.addEventListener('load',function(){setTimeout(fonts,60)});
 </script>
 </body>
 </html>
